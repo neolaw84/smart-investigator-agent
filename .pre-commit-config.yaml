@@ -1,6 +1,9 @@
 repos:
--   repo: https://github.com/kynan/nbstripout
-    rev: 0.6.1
+-   repo: local
     hooks:
-    -   id: nbstripout
-        files: ".ipynb$"
+    -   id: check-notebook-outputs
+        name: Check Notebook Outputs
+        entry: scripts/check_notebooks.sh
+        language: script
+        files: \.ipynb$
+        pass_filenames: true
