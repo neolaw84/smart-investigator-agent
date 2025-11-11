@@ -1,7 +1,7 @@
 from uuid import uuid4
 from typing import Annotated
-from langchain.tools import InjectedToolCallId
-from langchain.tools import tool
+from langchain_core.tools import InjectedToolCallId
+from langchain_core.tools import tool
 from langgraph.types import Command, interrupt
 
 def create_ticketing_agent_tool(agent_tkt):

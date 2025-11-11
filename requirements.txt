@@ -3,5 +3,7 @@ httpx
 pydantic
 pyconject
 langchain
+langchain-core
+langchain-community
 langchain-openai
 langgraph
