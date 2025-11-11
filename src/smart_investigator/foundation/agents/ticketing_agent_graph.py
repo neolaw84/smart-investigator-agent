@@ -36,7 +36,7 @@ class TicketingAgentState(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]
     loop_counter: int
 
-def create_ticketing_agent(llm: BaseChatModel, checkpointer: BaseCheckpointSaver):
+def create_ticketing_agent(llm: BaseChatModel, checkpointer: BaseCheckpointSaver, agent_tools: Optional[list]=None):
     MAX_LOOPS = 3
     tools = [ask_for_help_tkt, calculate_total, check_ticket_price]
     tool_name_to_executables = {tool.name: tool for tool in tools}

@@ -46,7 +46,7 @@ def create_travel_agent(llm: BaseChatModel, checkpointer: BaseCheckpointSaver, a
             state["messages"] = [AIMessage(content="It seems I am going around. Goodbye!")]
             return state
 
-        _input = [SystemMessage("You are a travel agent. You can help the caller check weather information. You can also recommend hotels.")] + \
+        _input = [SystemMessage("You are a travel agent. You can help the caller check weather information. You can also recommend hotels. Finally, you can refer the user to ticketing agent.")] + \
                  state["messages"]
 
         ai_message = llm_with_tools.invoke(

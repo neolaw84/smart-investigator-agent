@@ -16,9 +16,11 @@ def create_ticketing_agent_tool(agent_tkt):
         result = agent_tkt.invoke({
             "messages": [{"role": "user", "content": query}]
         })
+        config = {}
         while "__interrupt__" in result:
+            if not config: config = {"configurable": {"thread_id": str(uuid4()) }}
             human_response = interrupt("Ticketing Agent has a question: \n" + str(result["messages"][-1].content) + "\nYour response: ")
-            config = {"configurable": {"thread_id": str(uuid4()) }}
+            
             result = agent_tkt.invoke(Command(resume=human_response), config=config)
         return result["messages"][-1].content
     
