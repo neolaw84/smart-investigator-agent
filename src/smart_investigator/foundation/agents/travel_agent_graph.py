@@ -24,7 +24,7 @@ def get_weather(location):
     weather = random.choice(["sunny", "rainy"])
     return f"The weather in {location} is {weather}."
 
-@tool("ask_for_help", description="Ask for help from the caller agent (usually human).")
+@tool("ask_for_help", description="Ask for help or more information from the caller agent (usually human).")
 def ask_for_help(question):
     help = interrupt(f"I have a question : {question}")
     return help 
@@ -32,6 +32,7 @@ def ask_for_help(question):
 class TravelAgentState(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]
     loop_counter: int
+    active_agent: str
 
 
 def create_travel_agent(llm: BaseChatModel, checkpointer: BaseCheckpointSaver, agent_tools: Optional[list]=[]):
@@ -40,11 +41,8 @@ def create_travel_agent(llm: BaseChatModel, checkpointer: BaseCheckpointSaver, a
     tools = [get_weather, ask_for_help] + agent_tools
     tool_name_to_executables = {tool.name: tool for tool in tools}
     llm_with_tools = llm.bind_tools(tools)
-    MAX_LOOPS = 3
+
     def llm_call(state: TravelAgentState) -> TravelAgentState:
-        if state.get("loop_counter", 0) > MAX_LOOPS:
-            state["messages"] = [AIMessage(content="It seems I am going around. Goodbye!")]
-            return state
 
         _input = [SystemMessage("You are a travel agent. You can help the caller check weather information. You can also recommend hotels. Finally, you can refer the user to ticketing agent.")] + \
                  state["messages"]

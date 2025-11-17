@@ -16,7 +16,7 @@ from langgraph.types import interrupt, Command
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 
-@tool("ask_for_help_tkt", description="Ask for help from the caller agent (usually travel agent).")
+@tool("ask_for_help_tkt", description="Ask for help or more information from the caller agent (usually travel agent).")
 def ask_for_help_tkt(question):
     help = interrupt(f"I have a question : {question}")
     return help 
@@ -32,13 +32,18 @@ def check_ticket_price(origin: str, destination: str, round_trip: bool) -> float
         return base_price * 2
     return base_price
 
+@tool("book_ticket", description="Call this tool to book a ticket.")
+def book_ticket(origin: str, destination: str, round_trip: bool, quantity: int, unit_price: float):
+    return {"ticket_booked": True}     
+
 class TicketingAgentState(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]
     loop_counter: int
+    ticket_booked: bool = False
 
 def create_ticketing_agent(llm: BaseChatModel, checkpointer: BaseCheckpointSaver, agent_tools: Optional[list]=None):
-    MAX_LOOPS = 3
-    tools = [ask_for_help_tkt, calculate_total, check_ticket_price]
+    MAX_LOOPS = 20
+    tools = [ask_for_help_tkt, calculate_total, check_ticket_price, book_ticket]
     tool_name_to_executables = {tool.name: tool for tool in tools}
     llm_with_tools = llm.bind_tools(tools)
 
@@ -59,9 +64,9 @@ def create_ticketing_agent(llm: BaseChatModel, checkpointer: BaseCheckpointSaver
         state["loop_counter"] = 1 + state.get("loop_counter", 0)
         return state
 
-    def check_tool_call(state: TicketingAgentState) -> Literal["tool_executor", "END"]:
+    def check_tool_call(state: TicketingAgentState) -> Literal["llm_call", "tool_executor", "END"]:
         last_message = state["messages"][-1]
-        if last_message.tool_calls:
+        if isinstance(last_message, AIMessage) and last_message.tool_calls:
             return "tool_executor"
         else:
             return END
@@ -71,15 +76,19 @@ def create_ticketing_agent(llm: BaseChatModel, checkpointer: BaseCheckpointSaver
         for tc in state["messages"][-1].tool_calls:
             _id, _name, _args = tc["id"], tc["name"], tc["args"]
             tool_response = tool_name_to_executables[_name].invoke(_args)
+            if isinstance(tool_response, dict) and tool_response.get("ticket_booked", False):
+                state["ticket_booked"] = True
             result.append(ToolMessage(content=tool_response, tool_call_id=_id))
         state["messages"].extend(result)
+        if state.get("ticket_booked", False):
+            state["messages"].append(AIMessage("Ticket booked."))
         return state
 
     builder = StateGraph(TicketingAgentState)
     builder.add_node("llm_call", llm_call)
     builder.add_node("tool_executor", tool_executor)
     builder.add_edge(START, "llm_call")
-    builder.add_conditional_edges("llm_call", check_tool_call, ["tool_executor", END])
+    builder.add_conditional_edges("llm_call", check_tool_call, ["llm_call", "tool_executor", END])
     builder.add_edge("tool_executor", "llm_call")
 
     return builder.compile(checkpointer=checkpointer)
